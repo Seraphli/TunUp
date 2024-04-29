@@ -11,6 +11,9 @@
             "linux": {
                 "command": "${workspaceFolder}/.vscode/setup.sh",
             },
+            "osx": {
+                "command": "${workspaceFolder}/.vscode/setup.sh",
+            },
             // // placeholder for windows scripts, not currently planned
             // "windows": {
             //     "command": "call -c ${workspaceFolder}\\.vscode\\setup.bat",
@@ -47,6 +50,9 @@
             "linux": {
                 "command": "${workspaceFolder}/.vscode/config.sh",
             },
+            "osx": {
+                "command": "${workspaceFolder}/.vscode/config.sh",
+            },
             // // placeholder for windows scripts, not currently planned
             // "windows": {
             //     "command": "call ${workspaceFolder}\\.vscode\\config.bat",
@@ -60,6 +66,9 @@
             "detail": "Build plugin with CLI",
             "linux": {
                 "command": "${workspaceFolder}/.vscode/build.sh",
+            },
+            "osx": {
+                "command": "${workspaceFolder}/.vscode/build_osx.sh",
             },
             // // placeholder for windows logic, not currently planned
             // "windows": {

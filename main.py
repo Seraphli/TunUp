@@ -1,18 +1,35 @@
 import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # The decky plugin module is located at decky-loader/plugin
 # For easy intellisense checkout the decky-loader code one directory up
 # or add the `decky-loader/plugin` path to `python.analysis.extraPaths` in `.vscode/settings.json`
 import decky_plugin
+from settings import SettingsManager
+
+from py_modules import VERSION
+from py_modules.func import decr, incr, wrap_return
 
 
 class Plugin:
-    # A normal method. It can be called from JavaScript using call_plugin_function("method_1", argument1, argument2)
-    async def add(self, left, right):
-        return left + right
+    VERSION = decky_plugin.DECKY_PLUGIN_VERSION
+    settingsManager = SettingsManager(
+        "decky-spy", os.environ["DECKY_PLUGIN_SETTINGS_DIR"]
+    )
+
+    async def get_version(self):
+        return wrap_return(VERSION)
+
+    async def incr(self, value):
+        return wrap_return(incr(value))
+
+    async def decr(self, value):
+        return wrap_return(decr(value))
 
     async def log(self, message):
-        value = await Plugin.get_settings(self, "debug.frontend", False, string=False)
+        value = await Plugin.get_settings(self, "debug.frontend", True, string=False)
         if value:
             decky_plugin.logger.info("[DeckySpy][F]" + message)
 
@@ -20,7 +37,7 @@ class Plugin:
         decky_plugin.logger.error("[DeckySpy][F]" + message)
 
     async def log_py(self, message):
-        value = await Plugin.get_settings(self, "debug.backend", False, string=False)
+        value = await Plugin.get_settings(self, "debug.backend", True, string=False)
         if value:
             decky_plugin.logger.info("[DeckySpy][B]" + message)
 

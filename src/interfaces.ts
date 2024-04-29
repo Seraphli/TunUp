@@ -9,11 +9,26 @@ export interface LogErrorInfo {
 	stack?: string;
 }
 
+export interface BackendInfo {
+	version: string;
+}
+export const DefaultBackendInfo: BackendInfo = {
+	version: '0.0.0',
+};
+
 export interface Settings {
-	enabled: boolean;
+	integer: number;
+	debug: {
+		frontend: boolean;
+		backend: boolean;
+	};
 }
 export const DefaultSettings: Settings = {
-	enabled: false,
+	integer: 0,
+	debug: {
+		frontend: true,
+		backend: true,
+	},
 };
 
 export interface BackendReturn {
