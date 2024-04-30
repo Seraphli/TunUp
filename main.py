@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -9,24 +10,70 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import decky_plugin
 from settings import SettingsManager
 
-from py_modules import VERSION
-from py_modules.func import decr, incr, wrap_return
+from py_modules.func import check_service_status, download_file_with_curl, wrap_return
+
+server_process = None
 
 
 class Plugin:
     VERSION = decky_plugin.DECKY_PLUGIN_VERSION
-    settingsManager = SettingsManager(
-        "decky-spy", os.environ["DECKY_PLUGIN_SETTINGS_DIR"]
-    )
+    settingsManager = SettingsManager("TunUp", os.environ["DECKY_PLUGIN_SETTINGS_DIR"])
 
     async def get_version(self):
-        return wrap_return(VERSION)
+        return wrap_return(self.VERSION)
 
-    async def incr(self, value):
-        return wrap_return(incr(value))
+    async def check_services(self):
+        tunup = check_service_status("tunup")
+        await Plugin.log_py(self, tunup.pop("debug", None))
+        resolved = check_service_status("systemd-resolved")
+        await Plugin.log_py(self, resolved.pop("debug", None))
+        return wrap_return(
+            {
+                "tunup": tunup,
+                "resolved": resolved,
+            }
+        )
 
-    async def decr(self, value):
-        return wrap_return(decr(value))
+    async def add_profile(self, name, url):
+        Plugin.log(self, f"Adding profile: {name} - {url}")
+        # Get the directory of the current script
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        # Create the 'profiles' subdirectory if it doesn't exist
+        profiles_path = os.path.join(dir_path, "profiles")
+        result = download_file_with_curl(url, f"{profiles_path}/{name}.yml")
+        if not result:
+            return wrap_return(code=-1, data="Failed to download profile")
+        value = Plugin.get_settings(self, "Profiles", {}, string=False)
+        value.update({name: {"url": url, "path": f"{profiles_path}/{name}.yml"}})
+        self.settingsManager.setSetting("Profiles", value)
+        return wrap_return(value)
+
+    async def start_server(self):
+        """Start the server process"""
+        global server_process
+        if server_process is not None:
+            await Plugin.log_py(self, "Server is already running.")
+            return wrap_return(True)
+        # Get the directory of the current script
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        profiles_path = os.path.join(dir_path, "clash", "profiles")
+        server_process = subprocess.Popen(
+            ["python", "download_server.py"], cwd=profiles_path
+        )
+        await Plugin.log_py(self, "Server started.")
+        return wrap_return(True)
+
+    async def stop_server(self):
+        """Stop the server process"""
+        global server_process
+        if server_process is None:
+            await Plugin.log_py(self, "Server is not running.")
+            return wrap_return(True)
+        server_process.terminate()  # Send termination signal
+        server_process.wait()  # Wait for the process to finish
+        await Plugin.log_py(self, "Server stopped.")
+        server_process = None
+        return wrap_return(True)
 
     async def log(self, message):
         value = await Plugin.get_settings(self, "debug.frontend", True, string=False)
@@ -39,10 +86,10 @@ class Plugin:
     async def log_py(self, message):
         value = await Plugin.get_settings(self, "debug.backend", True, string=False)
         if value:
-            decky_plugin.logger.info("[DeckySpy][B]" + message)
+            decky_plugin.logger.info("[DeckySpy][B]" + str(message))
 
     async def log_py_err(self, message):
-        decky_plugin.logger.error("[DeckySpy][B]" + message)
+        decky_plugin.logger.error("[DeckySpy][B]" + str(message))
 
     async def get_settings(self, key, default, string=True):
         value = self.settingsManager.getSetting(key, default)
@@ -58,10 +105,12 @@ class Plugin:
 
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
-        decky_plugin.logger.info("TunUp backend loaded.")
+        decky_plugin.logger.info(f"TunUp {self.VERSION} backend loaded.")
 
     # Function called first during the unload process, utilize this to handle your plugin being removed
     async def _unload(self):
+        if server_process is not None:
+            Plugin.stop_server(self)
         decky_plugin.logger.info("TunUp backend unloaded.")
 
     # Migrations that should be performed before entering `_main()`.

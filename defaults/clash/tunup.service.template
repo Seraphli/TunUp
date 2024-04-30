@@ -1,0 +1,10 @@
+[Unit]
+Description=TunUp Service
+After=network.target
+
+[Service]
+ExecStart={COMMAND}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

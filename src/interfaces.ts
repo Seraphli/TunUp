@@ -11,20 +11,43 @@ export interface LogErrorInfo {
 
 export interface BackendInfo {
 	version: string;
+	serviceStatus: {
+		[key: string]: {
+			active: boolean;
+			enabled: boolean;
+		};
+	};
 }
 export const DefaultBackendInfo: BackendInfo = {
 	version: '0.0.0',
+	serviceStatus: {
+		tunup: {
+			active: false,
+			enabled: false,
+		},
+		resolved: {
+			active: false,
+			enabled: false,
+		},
+	},
 };
 
 export interface Settings {
-	integer: number;
+	enabled: boolean;
+	profiles: {
+		[key: string]: {
+			url: string;
+			path: string;
+		};
+	};
 	debug: {
 		frontend: boolean;
 		backend: boolean;
 	};
 }
 export const DefaultSettings: Settings = {
-	integer: 0,
+	enabled: false,
+	profiles: {},
 	debug: {
 		frontend: true,
 		backend: true,

@@ -24,22 +24,21 @@ export class Backend {
 	}
 	async updateInfo() {
 		await this.getVersion();
+		await this.checkServices();
 	}
 
 	async getVersion() {
 		this.backendInfo.version = await this.bridge('get_version');
 	}
-	async incr() {
-		this.settings.integer = await this.bridge('incr', {
-			value: this.settings.integer,
-		});
-		await this.saveSettings();
+	async checkServices() {
+		this.backendInfo.serviceStatus = await this.bridge('check_services');
 	}
-	async decr() {
-		this.settings.integer = await this.bridge('decr', {
-			value: this.settings.integer,
-		});
-		await this.saveSettings();
+
+	async startServer() {
+		return await this.bridge('start_server');
+	}
+	async stopServer() {
+		return await this.bridge('stop_server');
 	}
 
 	async getSettings(key: string, defaultValue: any) {

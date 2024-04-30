@@ -12,6 +12,7 @@ import {
 	staticClasses,
 	ToggleField,
 	Field,
+	TextField,
 } from 'decky-frontend-lib';
 import { VFC, useState, useEffect } from 'react';
 import { FaRegPaperPlane } from 'react-icons/fa';
@@ -23,17 +24,53 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
 		backend.backendInfo,
 	);
 	const [settings, setSettings] = useState<Settings>(backend.settings);
+	const [serverOnline, setServerOnline] = useState(false);
+
 	useEffect(() => {}, []);
 	return (
 		<div>
-			<PanelSection title="Display">
-				<PanelSectionRow>
-					<Field focusable={true}>
-						<div>{settings.integer}</div>
-					</Field>
-				</PanelSectionRow>
+			<PanelSection title="Profile Download">
+				<Field focusable={true} childrenContainerWidth="max">
+					Start the server and visit
+					<br />
+					<strong>http://[steamdeck_ip]:12345</strong>
+					<br />
+					to add or update a profile. <br />
+					You can check your IP in the settings.
+				</Field>
+				<ButtonItem
+					layout="below"
+					disabled={serverOnline}
+					onClick={async () => {
+						await backend.startServer();
+						setServerOnline(true);
+					}}
+				>
+					Start Server
+				</ButtonItem>
+				<ButtonItem
+					layout="below"
+					disabled={!serverOnline}
+					onClick={async () => {
+						await backend.stopServer();
+						setServerOnline(false);
+					}}
+				>
+					Stop Server
+				</ButtonItem>
 			</PanelSection>
-			<PanelSection title="Actions">
+			<PanelSection title="Service Status">
+				{Object.entries(backendInfo.serviceStatus).map(
+					([key, { active, enabled }]) => (
+						<Field label={key} focusable={true}>
+							Active: {`${active}`}
+							<br />
+							Enabled: {`${enabled}`}
+						</Field>
+					),
+				)}
+			</PanelSection>
+			{/* <PanelSection title="Actions">
 				<PanelSectionRow>
 					<ButtonItem
 						layout="below"
@@ -60,7 +97,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
 						Decr
 					</ButtonItem>
 				</PanelSectionRow>
-			</PanelSection>
+			</PanelSection> */}
 			<PanelSection title="Debug Info">
 				<Field label="Version" focusable={true}>
 					{backendInfo.version}
