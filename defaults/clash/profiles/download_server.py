@@ -24,6 +24,8 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <h1>Profile Management</h1>
+    <p>Please use the tabs below to either download or upload YML profile files. Enter the required information in the fields provided and submit your request.</p>
+    {CWD}
     <div id="tabs">
         <div class="tab-links" onclick="openTab('Download')">Download</div>
         <div class="tab-links" onclick="openTab('Upload')">Upload</div>
@@ -100,8 +102,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             upload_profile_name="",
             upload_response_message="",
         )
-        html = HTML_TEMPLATE.replace("{FORM_TEMPLATE}", form).replace(
-            "{active_tab}", "Download"
+        html = (
+            HTML_TEMPLATE.replace("{FORM_TEMPLATE}", form)
+            .replace("{CWD}", f"<p>Current working directory: {os.getcwd()}</p>")
+            .replace("{active_tab}", "Download")
         )
         self.wfile.write(html.encode("utf-8"))
 
@@ -134,6 +138,13 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         try:
             subprocess.run(command, shell=True, check=True)
             response_message = "File downloaded successfully."
+            update_time = int(time.time())
+            meta_filename = profile_name + ".meta.yml"
+            with open(meta_filename, "w") as meta_file:
+                meta_file.write(f"url: {url}\n")
+                meta_file.write(f"update_time: {update_time}\n")
+                meta_file.write(f"update_interval: {interval}\n")
+                meta_file.write("type: download\n")
         except subprocess.CalledProcessError as e:
             response_message = f"Error downloading file: {e}"
             if os.path.exists(filename):
@@ -142,14 +153,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             response_message = f"An unexpected error occurred: {str(e)}"
             if os.path.exists(filename):
                 os.remove(filename)
-
-        update_time = int(time.time())
-        meta_filename = profile_name + ".meta.yml"
-        with open(meta_filename, "w") as meta_file:
-            meta_file.write(f"url: {url}\n")
-            meta_file.write(f"update_time: {update_time}\n")
-            meta_file.write(f"update_interval: {interval}\n")
-            meta_file.write("type: download\n")
 
         self.send_response(200)
         self.send_header("Content-type", "text/html")
@@ -162,8 +165,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             upload_profile_name="",
             upload_response_message="",
         )
-        html = HTML_TEMPLATE.replace("{FORM_TEMPLATE}", form_template).replace(
-            "{active_tab}", "Download"
+        html = (
+            HTML_TEMPLATE.replace("{FORM_TEMPLATE}", form_template)
+            .replace("{CWD}", f"<p>Current working directory: {os.getcwd()}</p>")
+            .replace("{active_tab}", "Download")
         )
         self.wfile.write(html.encode("utf-8"))
 
@@ -172,15 +177,20 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         file_item = form["file"]
 
         if file_item.filename and file_item.filename.endswith(".yml"):
-            filename = profile_name + ".yml"
-            with open(filename, "wb") as file_out:
-                file_out.write(file_item.file.read())
-            response_message = "File uploaded successfully."
-            update_time = int(time.time())
-            meta_filename = profile_name + ".meta.yml"
-            with open(meta_filename, "w") as meta_file:
-                meta_file.write("type: upload\n")
-                meta_file.write(f"update_time: {update_time}\n")
+            try:
+                filename = profile_name + ".yml"
+                with open(filename, "wb") as file_out:
+                    file_out.write(file_item.file.read())
+                response_message = "File uploaded successfully."
+                update_time = int(time.time())
+                meta_filename = profile_name + ".meta.yml"
+                with open(meta_filename, "w") as meta_file:
+                    meta_file.write("type: upload\n")
+                    meta_file.write(f"update_time: {update_time}\n")
+            except Exception as e:
+                response_message = f"An unexpected error occurred: {str(e)}"
+                if os.path.exists(filename):
+                    os.remove(filename)
         else:
             response_message = "Invalid file type. Only .yml files are accepted."
 
@@ -195,8 +205,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             upload_profile_name=profile_name,
             upload_response_message=response_message,
         )
-        html = HTML_TEMPLATE.replace("{FORM_TEMPLATE}", form_template).replace(
-            "{active_tab}", "Upload"
+        html = (
+            HTML_TEMPLATE.replace("{FORM_TEMPLATE}", form_template)
+            .replace("{CWD}", f"<p>Current working directory: {os.getcwd()}</p>")
+            .replace("{active_tab}", "Upload")
         )
         self.wfile.write(html.encode("utf-8"))
 

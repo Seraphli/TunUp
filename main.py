@@ -57,8 +57,14 @@ class Plugin:
         # Get the directory of the current script
         dir_path = os.path.dirname(os.path.realpath(__file__))
         profiles_path = os.path.join(dir_path, "clash", "profiles")
+        profiles_savepath = os.path.join(
+            os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles"
+        )
+        if not os.path.exists(profiles_savepath):
+            # Create the directory if it does not exist
+            os.makedirs(profiles_savepath, exist_ok=True)
         server_process = subprocess.Popen(
-            ["python", "download_server.py"], cwd=profiles_path
+            ["python", f"{profiles_path}/download_server.py"], cwd=profiles_savepath
         )
         await Plugin.log_py(self, "Server started.")
         return wrap_return(True)

@@ -35,8 +35,8 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
 					<br />
 					<strong>http://[steamdeck_ip]:12345</strong>
 					<br />
-					to add or update a profile. <br />
-					You can check your IP in the settings.
+					to update profiles. <br />
+					You can get SteamDeck's IP in the settings.
 				</Field>
 				<ButtonItem
 					layout="below"
