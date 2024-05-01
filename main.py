@@ -10,7 +10,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import decky_plugin
 from settings import SettingsManager
 
-from py_modules.func import check_service_status, download_file_with_curl, wrap_return
+from py_modules.func import (
+    check_service_status,
+    download_file_with_curl,
+    kill_process_on_port,
+    wrap_return,
+)
 
 server_process = None
 
@@ -74,6 +79,8 @@ class Plugin:
         global server_process
         if server_process is None:
             await Plugin.log_py(self, "Server is not running.")
+            if kill_process_on_port(12345):
+                await Plugin.log_py(self, "Killed another process using port 12345.")
             return wrap_return(True)
         server_process.terminate()  # Send termination signal
         server_process.wait()  # Wait for the process to finish

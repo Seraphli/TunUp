@@ -65,6 +65,27 @@ def download_file_with_curl(url, filename):
     return True
 
 
+def kill_process_on_port(port):
+    """Kill process on a given port using lsof and kill command on Unix."""
+    try:
+        # Find PID using port
+        result = subprocess.run(
+            ["lsof", "-ti", f"tcp:{port}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if result.stdout:
+            pid = int(result.stdout.strip())
+            # Kill the process using the PID
+            subprocess.run(
+                ["kill", "-9", str(pid)], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            return True
+        return False
+    except Exception:
+        return False
+
+
 def install(service_name, service_file_path):
     if not check_if_service_exists(service_name):
         install_service(service_name, service_file_path)
