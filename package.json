@@ -1,6 +1,6 @@
 {
   "name": "tunup",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "Decky network plugin.",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",

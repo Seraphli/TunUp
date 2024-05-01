@@ -12,8 +12,8 @@ from settings import SettingsManager
 
 from py_modules.func import (
     check_service_status,
-    download_file_with_curl,
     kill_process_on_port,
+    list_profiles,
     wrap_return,
 )
 
@@ -39,19 +39,12 @@ class Plugin:
             }
         )
 
-    async def add_profile(self, name, url):
-        Plugin.log(self, f"Adding profile: {name} - {url}")
-        # Get the directory of the current script
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        # Create the 'profiles' subdirectory if it doesn't exist
-        profiles_path = os.path.join(dir_path, "profiles")
-        result = download_file_with_curl(url, f"{profiles_path}/{name}.yml")
-        if not result:
-            return wrap_return(code=-1, data="Failed to download profile")
-        value = Plugin.get_settings(self, "Profiles", {}, string=False)
-        value.update({name: {"url": url, "path": f"{profiles_path}/{name}.yml"}})
-        self.settingsManager.setSetting("Profiles", value)
-        return wrap_return(value)
+    async def get_profiles(self):
+        return wrap_return(
+            list_profiles(
+                os.path.join(os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles")
+            )
+        )
 
     async def start_server(self):
         """Start the server process"""

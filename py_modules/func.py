@@ -1,3 +1,5 @@
+import glob
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -100,3 +102,26 @@ def check_services():
         "tunup": check_service_status("tunup"),
         "resolved": check_service_status("systemd-resolved"),
     }
+
+
+def list_profiles(folder_path):
+    # Find all .yml files in the specified folder path
+    yml_files = glob.glob(os.path.join(folder_path, "*.yml"))
+    # Create a set to store unique profile names
+    profiles = set()
+
+    # Iterate over all .yml files found
+    for file_path in yml_files:
+        # Get the base filename without the extension
+        base_name = os.path.basename(file_path)
+        name = os.path.splitext(base_name)[0]
+
+        # Remove the '.meta' suffix if it exists
+        if name.endswith(".meta"):
+            name = name[:-5]
+
+        # Add the profile name to the set
+        profiles.add(name)
+
+    # Convert the set to a list and return it
+    return list(profiles)
