@@ -11,10 +11,14 @@ export interface LogErrorInfo {
 
 export interface BackendInfo {
     version: string;
-	profiles: string[];
+    profiles: string[];
+    profile_meta: {
+        type: string;
+        update_time: number;
+    };
     serviceStatus: {
         [key: string]: {
-			exists: boolean;
+            exists: boolean;
             active: boolean;
             enabled: boolean;
         };
@@ -22,15 +26,19 @@ export interface BackendInfo {
 }
 export const DefaultBackendInfo: BackendInfo = {
     version: '0.0.0',
-	profiles: [],
+    profiles: [],
+	profile_meta: {
+		type: '',
+		update_time: 0,
+	},
     serviceStatus: {
         tunup: {
-			exists: false,
+            exists: false,
             active: false,
             enabled: false,
         },
         resolved: {
-			exists: true,
+            exists: true,
             active: false,
             enabled: false,
         },

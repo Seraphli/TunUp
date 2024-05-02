@@ -1,8 +1,11 @@
+import codecs
 import glob
 import os
 import shutil
 import subprocess
 from pathlib import Path
+
+import yaml
 
 
 def wrap_return(data, code=0):
@@ -103,6 +106,67 @@ def list_profiles(folder_path):
 
     # Convert the set to a list and return it
     return list(profiles)
+
+
+def get_profile_meta(profile_name):
+    # Get the path to the profile meta file
+    meta_file_path = os.path.join(
+        os.environ["DECKY_PLUGIN_SETTINGS_DIR"],
+        "profiles",
+        f"{profile_name}.meta.yml",
+    )
+
+    # Check if the meta file exists
+    if not os.path.exists(meta_file_path):
+        return None
+
+    # Read the contents of the meta file
+    with open(meta_file_path, "r") as file:
+        meta_data = yaml.safe_load(file)
+
+    # Return the contents of the meta file
+    return meta_data
+
+
+def set_profile_meta(profile_name, meta_data):
+    # Get the path to the profile meta file
+    meta_file_path = os.path.join(
+        os.environ["DECKY_PLUGIN_SETTINGS_DIR"],
+        "profiles",
+        f"{profile_name}.meta.yml",
+    )
+
+    # Write the meta data to the meta file
+    with open(meta_file_path, "w") as file:
+        yaml.dump(meta_data, file)
+
+    return True
+
+
+def update_config_file(profile_name, dir_path):
+    profiles_savepath = os.path.join(
+        os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles"
+    )
+    clash_path = os.path.join(dir_path, "clash")
+    config_path = os.path.expanduser("~/.config")
+    tunup_path = os.path.join(config_path, "tunup")
+    profile_yml = yaml.safe_load(
+        codecs.open(
+            os.path.join(profiles_savepath, f"{profile_name}.yml"), "r", "utf-8"
+        )
+    )
+    template_yml = yaml.safe_load(
+        codecs.open(os.path.join(clash_path, "template.yml"), "r", "utf-8")
+    )
+    config_yml = {**template_yml}
+    config_yml["proxies"] = profile_yml["proxies"]
+    config_yml["proxy-groups"] = profile_yml["proxy-groups"]
+    config_yml["rules"] = profile_yml["rules"]
+    yaml.dump(
+        config_yml,
+        codecs.open(os.path.join(tunup_path, "config.yml"), "w", "utf-8"),
+        allow_unicode=True,
+    )
 
 
 def copy_file(src, dst):

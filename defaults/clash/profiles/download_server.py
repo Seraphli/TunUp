@@ -68,7 +68,7 @@ FORM_TEMPLATE = """
             <input type="text" id="d-name" name="name" value="{download_profile_name}">
             <label for="d-url">URL:</label>
             <input type="text" id="d-url" name="url" value="{download_url}">
-            <label for="d-interval">Update Interval (seconds):</label>
+            <label for="d-interval">Update Interval (hours):</label>
             <input type="number" id="d-interval" name="interval" value="{download_interval}" min="0">
             <input type="submit" value="Download">
         </form>

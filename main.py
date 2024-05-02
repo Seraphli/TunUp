@@ -1,7 +1,10 @@
 import codecs
 import os
+import shlex
 import subprocess
 import sys
+import tempfile
+import time
 
 import yaml
 
@@ -18,10 +21,12 @@ from py_modules.func import (
     check_service_status,
     copy_file,
     copy_folder,
-    install_service,
+    get_profile_meta,
     kill_process_on_port,
     list_profiles,
     run_command,
+    set_profile_meta,
+    update_config_file,
     wrap_return,
 )
 
@@ -57,16 +62,70 @@ class Plugin:
             )
         )
 
+    async def get_profile_meta(self, profile_name):
+        ret = get_profile_meta(profile_name)
+        if ret is None:
+            return wrap_return(False)
+        return wrap_return(
+            {
+                "type": ret["type"],
+                "update_time": ret["update_time"],
+            }
+        )
+
+    async def update_profile(self, profile_name):
+        profile_meta = get_profile_meta(profile_name)
+        if profile_meta is None:
+            return wrap_return(False)
+        profile_type = profile_meta["type"]
+        if profile_type == "upload":
+            await Plugin.log_py(self, "Profile is of type upload")
+            return wrap_return(False)
+        # Download profile
+        url = profile_meta["url"]
+        update_interval = profile_meta["update_interval"]
+        # CURL to temp dir then move to profiles
+        safe_url = shlex.quote(url)
+        with tempfile.NamedTemporaryFile(suffix=".yml", delete=False) as temp_file:
+            filename = shlex.quote(temp_file.name)
+        command = f"curl -L {safe_url} -o {filename}"
+        profiles_savepath = os.path.join(
+            os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles"
+        )
+        try:
+            subprocess.run(command, shell=True, check=True)
+            # Move to profiles
+            copy_file(
+                filename,
+                os.path.join(
+                    profiles_savepath,
+                    f"{profile_name}.yml",
+                ),
+            )
+            update_time = int(time.time())
+            meta_filename = os.path.join(
+                profiles_savepath,
+                f"{profile_name}.meta.yml",
+            )
+            with open(meta_filename, "w") as meta_file:
+                meta_file.write(f"url: {url}\n")
+                meta_file.write(f"update_time: {update_time}\n")
+                meta_file.write(f"update_interval: {update_interval}\n")
+                meta_file.write("type: download\n")
+        except Exception as e:
+            await Plugin.log_py_err(self, f"Error downloading file: {e}")
+            return wrap_return(False)
+        update_config_file(profile_name, os.path.dirname(os.path.realpath(__file__)))
+        ret = run_command(["systemctl", "restart", "tunup"])
+        await Plugin.log_py(self, "Restart tunup: " + str(ret))
+        return wrap_return(True)
+
     async def install_service(self):
         cur_profile = await Plugin.get_settings(self, "profile", "", string=False)
         if cur_profile == "":
             return wrap_return(False)
         dir_path = os.path.dirname(os.path.realpath(__file__))
         clash_path = os.path.join(dir_path, "clash")
-        profiles_savepath = os.path.join(
-            os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles"
-        )
-
         config_path = os.path.expanduser("~/.config")
         tunup_path = os.path.join(config_path, "tunup")
         os.makedirs(tunup_path, exist_ok=True)
@@ -90,23 +149,7 @@ class Plugin:
             os.path.join(clash_path, "web"),
             os.path.join(tunup_path, "web"),
         )
-        profile_yml = yaml.safe_load(
-            codecs.open(
-                os.path.join(profiles_savepath, f"{cur_profile}.yml"), "r", "utf-8"
-            )
-        )
-        template_yml = yaml.safe_load(
-            codecs.open(os.path.join(clash_path, "template.yml"), "r", "utf-8")
-        )
-        config_yml = {**template_yml}
-        config_yml["proxies"] = profile_yml["proxies"]
-        config_yml["proxy-groups"] = profile_yml["proxy-groups"]
-        config_yml["rules"] = profile_yml["rules"]
-        yaml.dump(
-            config_yml,
-            codecs.open(os.path.join(tunup_path, "config.yml"), "w", "utf-8"),
-            allow_unicode=True,
-        )
+        update_config_file(cur_profile, os.path.dirname(os.path.realpath(__file__)))
 
         ret = run_command(
             [
@@ -121,10 +164,6 @@ class Plugin:
         await Plugin.log_py(self, "Reload daemon: " + str(ret))
         ret = run_command(["systemctl", "enable", "tunup"])
         await Plugin.log_py(self, "Enable service: " + str(ret))
-        ret = run_command(["systemctl", "disable", "systemd-resolved"])
-        await Plugin.log_py(self, "Disable resolved: " + str(ret))
-        ret = run_command(["systemctl", "stop", "systemd-resolved"])
-        await Plugin.log_py(self, "Stop resolved: " + str(ret))
         ret = run_command(["systemctl", "restart", "tunup"])
         await Plugin.log_py(self, "Restart tunup: " + str(ret))
         return wrap_return(str(ret))

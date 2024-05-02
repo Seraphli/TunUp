@@ -26,6 +26,7 @@ export class Backend {
         await this.getVersion();
         await this.checkServices();
         await this.getProfiles();
+		await this.updateProfileMeta();
     }
 
     async getVersion() {
@@ -37,6 +38,16 @@ export class Backend {
     async getProfiles() {
         this.backendInfo.profiles = await this.bridge('get_profiles');
     }
+    async getProfileMeta(profile_name: string) {
+        return await this.bridge('get_profile_meta', { profile_name });
+    }
+    async updateProfileMeta() {
+        if (this.settings.profile !== '') {
+            this.backendInfo.profile_meta = await this.getProfileMeta(
+                this.settings.profile,
+            );
+        }
+    }
 
     async startServer() {
         return await this.bridge('start_server');
@@ -45,20 +56,24 @@ export class Backend {
         return await this.bridge('stop_server');
     }
 
-	async checkIfServiceExists(service: string) {
-		return await this.bridge('check_if_service_exists', { service });
-	}
+    async checkIfServiceExists(service: string) {
+        return await this.bridge('check_if_service_exists', { service });
+    }
     async installService() {
         return await this.bridge('install_service');
     }
-	async uninstallService() {
-		return await this.bridge('uninstall_service');
-	}
+    async uninstallService() {
+        return await this.bridge('uninstall_service');
+    }
     async startService(service: string) {
         return await this.bridge('start_service', { service });
     }
     async stopService(service: string) {
         return await this.bridge('stop_service', { service });
+    }
+
+    async updateProfile(profile_name: string) {
+        return await this.bridge('update_profile', { profile_name });
     }
 
     async getSettings(key: string, defaultValue: any) {

@@ -15,9 +15,7 @@ import {
 import { VFC, useState, useEffect } from 'react';
 import { FaRegPaperPlane } from 'react-icons/fa';
 import { Backend } from './backend';
-import { BackendInfo, DefaultBackendInfo, Settings } from './interfaces';
-
-let current_sub = '';
+import { BackendInfo, Settings } from './interfaces';
 
 const Content: VFC<{ backend: Backend }> = ({ backend }) => {
     const [backendInfo, setBackendInfo] = useState<BackendInfo>(
@@ -25,7 +23,10 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
     );
     const [settings, setSettings] = useState<Settings>(backend.settings);
     const [serverOnline, setServerOnline] = useState(false);
-    const [serviceOnline, setServiceOnline] = useState(backend.backendInfo.serviceStatus.tunup.enabled);
+    const [working, setWorking] = useState(false);
+    const [serviceOnline, setServiceOnline] = useState(
+        backend.backendInfo.serviceStatus.tunup.enabled,
+    );
     const [options, setOptions] = useState<DropdownOption[]>(
         (() => {
             let subs_option: DropdownOption[] = [];
@@ -38,6 +39,10 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
     const [currentSub, setCurrentSub] = useState<string>(
         backend.settings.profile,
     );
+    const [profileMeta, setProfileMeta] = useState<{
+        type: string;
+        update_time: number;
+    }>(backend.backendInfo.profile_meta);
 
     useEffect(() => {}, []);
     return (
@@ -76,13 +81,41 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                         backend.settings.profile = x.data;
                         await backend.saveSettings();
                         setCurrentSub(x.data);
+                        await backend.updateProfileMeta();
+                        setProfileMeta(backend.backendInfo.profile_meta);
                     }}
                 />
+                {currentSub !== '' ? (
+                    <PanelSectionRow>
+                        <Field focusable={false} label="Last Update: ">
+                            {new Date(
+                                profileMeta.update_time * 1000,
+                            ).toLocaleString()}
+                        </Field>
+                        <ButtonItem
+                            layout="below"
+                            disabled={working}
+                            onClick={async () => {
+                                setWorking(true);
+                                await backend.updateProfile(currentSub);
+                                await backend.updateProfileMeta();
+                                setProfileMeta(
+                                    backend.backendInfo.profile_meta,
+                                );
+                                setWorking(false);
+                            }}
+                        >
+                            Update Profile
+                        </ButtonItem>
+                    </PanelSectionRow>
+                ) : null}
                 <ToggleField
                     label="Enable Service"
                     description="Enable TunUp"
+                    disabled={working}
                     checked={serviceOnline}
                     onChange={async (value) => {
+                        setWorking(true);
                         if (value) {
                             await backend.installService();
                         } else {
@@ -90,7 +123,10 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                         }
                         await backend.checkServices();
                         setBackendInfo(backend.backendInfo);
-						setServiceOnline(backend.backendInfo.serviceStatus.tunup.enabled);
+                        setServiceOnline(
+                            backend.backendInfo.serviceStatus.tunup.enabled,
+                        );
+                        setWorking(false);
                     }}
                 />
                 <ButtonItem
@@ -101,7 +137,10 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                             'http://127.0.0.1:9090/ui',
                         );
                     }}
-                    disabled={!backend.backendInfo.serviceStatus.tunup.active}
+                    disabled={
+                        !backend.backendInfo.serviceStatus.tunup.active ||
+                        working
+                    }
                 >
                     Open Dashboard
                 </ButtonItem>
@@ -146,7 +185,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                     <ToggleField
                         label="Active"
                         description="Activate TunUp"
-						disabled={!backendInfo.serviceStatus.tunup.exists}
+                        disabled={!backendInfo.serviceStatus.tunup.exists}
                         checked={backendInfo.serviceStatus.tunup.active}
                         onChange={async (value) => {
                             if (value) {
@@ -169,7 +208,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                     <ToggleField
                         label="Active"
                         description="Activate Resolved"
-						disabled={!backendInfo.serviceStatus.resolved.exists}
+                        disabled={!backendInfo.serviceStatus.resolved.exists}
                         checked={backendInfo.serviceStatus.resolved.active}
                         onChange={async (value) => {
                             if (value) {
