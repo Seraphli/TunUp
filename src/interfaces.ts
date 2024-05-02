@@ -47,6 +47,7 @@ export const DefaultBackendInfo: BackendInfo = {
 
 export interface Settings {
     profile: string;
+	auto_update: boolean;
     debug: {
         frontend: boolean;
         backend: boolean;
@@ -54,6 +55,7 @@ export interface Settings {
 }
 export const DefaultSettings: Settings = {
     profile: '',
+	auto_update: false,
     debug: {
         frontend: true,
         backend: true,

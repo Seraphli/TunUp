@@ -59,6 +59,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                     }
                     rgOptions={options}
                     selectedOption={currentSub}
+                    disabled={working}
                     onMenuWillOpen={async () => {
                         await backend.getProfiles();
                         if (backend.backendInfo.profiles.length === 0) {
@@ -75,6 +76,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                         );
                     }}
                     onChange={async (x) => {
+                        setWorking(true);
                         if (x.data === currentSub || x.data === '') {
                             return;
                         }
@@ -83,6 +85,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                         setCurrentSub(x.data);
                         await backend.updateProfileMeta();
                         setProfileMeta(backend.backendInfo.profile_meta);
+                        setWorking(false);
                     }}
                 />
                 {currentSub !== '' ? (
@@ -94,7 +97,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                         </Field>
                         <ButtonItem
                             layout="below"
-                            disabled={working}
+                            disabled={working || profileMeta.type === 'upload'}
                             onClick={async () => {
                                 setWorking(true);
                                 await backend.updateProfile(currentSub);
@@ -107,6 +110,20 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                         >
                             Update Profile
                         </ButtonItem>
+                        {/* <ToggleField
+                            label="Auto Update"
+                            description="Auto update profile"
+                            disabled={working || profileMeta.type === 'upload'}
+                            checked={settings.auto_update}
+                            onChange={async (value) => {
+                                backend.settings.auto_update = value;
+                                await backend.saveSettings();
+                                setSettings({
+                                    ...settings,
+                                    auto_update: value,
+                                });
+                            }}
+                        /> */}
                     </PanelSectionRow>
                 ) : null}
                 <ToggleField

@@ -141,10 +141,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             update_time = int(time.time())
             meta_filename = profile_name + ".meta.yml"
             with open(meta_filename, "w") as meta_file:
+                meta_file.write("type: download\n")
                 meta_file.write(f"url: {url}\n")
                 meta_file.write(f"update_time: {update_time}\n")
                 meta_file.write(f"update_interval: {interval}\n")
-                meta_file.write("type: download\n")
         except subprocess.CalledProcessError as e:
             response_message = f"Error downloading file: {e}"
             if os.path.exists(filename):
@@ -187,6 +187,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 with open(meta_filename, "w") as meta_file:
                     meta_file.write("type: upload\n")
                     meta_file.write(f"update_time: {update_time}\n")
+                    meta_file.write("update_interval: 0\n")
             except Exception as e:
                 response_message = f"An unexpected error occurred: {str(e)}"
                 if os.path.exists(filename):
