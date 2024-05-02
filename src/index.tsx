@@ -51,9 +51,9 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
         <div>
             <PanelSection title="Profile Select">
                 <Field focusable={true} childrenContainerWidth="max">
-                    Select a profile and install it on your SteamDeck.
+                    Select a profile and enable it on your SteamDeck.
                     <br />
-                    <strong>Change profile need to reinstall</strong>
+                    <strong>Change profile need to re-enable</strong>
                 </Field>
                 <DropdownItem
                     strDefaultLabel={
