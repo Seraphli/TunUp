@@ -1,6 +1,9 @@
+import codecs
 import os
 import subprocess
 import sys
+
+import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -11,9 +14,14 @@ import decky_plugin
 from settings import SettingsManager
 
 from py_modules.func import (
+    check_if_service_exists,
     check_service_status,
+    copy_file,
+    copy_folder,
+    install_service,
     kill_process_on_port,
     list_profiles,
+    run_command,
     wrap_return,
 )
 
@@ -34,8 +42,11 @@ class Plugin:
         await Plugin.log_py(self, resolved.pop("debug", None))
         return wrap_return(
             {
-                "tunup": tunup,
-                "resolved": resolved,
+                "tunup": {"exists": check_if_service_exists("tunup"), **tunup},
+                "resolved": {
+                    "exists": check_if_service_exists("systemd-resolved"),
+                    **resolved,
+                },
             }
         )
 
@@ -45,6 +56,94 @@ class Plugin:
                 os.path.join(os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles")
             )
         )
+
+    async def install_service(self):
+        cur_profile = await Plugin.get_settings(self, "profile", "", string=False)
+        if cur_profile == "":
+            return wrap_return(False)
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        clash_path = os.path.join(dir_path, "clash")
+        profiles_savepath = os.path.join(
+            os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles"
+        )
+
+        config_path = os.path.expanduser("~/.config")
+        tunup_path = os.path.join(config_path, "tunup")
+        os.makedirs(tunup_path, exist_ok=True)
+
+        copy_file(
+            os.path.join(clash_path, "clashpremium-linux-amd64"),
+            os.path.join(tunup_path, "clashpremium-linux-amd64"),
+        )
+        run_command(
+            ["chmod", "+x", os.path.join(tunup_path, "clashpremium-linux-amd64")]
+        )
+        copy_file(
+            os.path.join(clash_path, "tunup.service"),
+            os.path.join(tunup_path, "tunup.service"),
+        )
+        copy_file(
+            os.path.join(clash_path, "Country.mmdb"),
+            os.path.join(tunup_path, "Country.mmdb"),
+        )
+        copy_folder(
+            os.path.join(clash_path, "web"),
+            os.path.join(tunup_path, "web"),
+        )
+        profile_yml = yaml.safe_load(
+            codecs.open(
+                os.path.join(profiles_savepath, f"{cur_profile}.yml"), "r", "utf-8"
+            )
+        )
+        template_yml = yaml.safe_load(
+            codecs.open(os.path.join(clash_path, "template.yml"), "r", "utf-8")
+        )
+        config_yml = {**template_yml}
+        config_yml["proxies"] = profile_yml["proxies"]
+        config_yml["proxy-groups"] = profile_yml["proxy-groups"]
+        config_yml["rules"] = profile_yml["rules"]
+        yaml.dump(
+            config_yml,
+            codecs.open(os.path.join(tunup_path, "config.yml"), "w", "utf-8"),
+            allow_unicode=True,
+        )
+
+        ret = run_command(
+            [
+                "cp",
+                os.path.join(tunup_path, "tunup.service"),
+                os.path.join("/etc/systemd/system", "tunup.service"),
+            ]
+        )
+        await Plugin.log_py(self, "Copy service file: " + str(ret))
+        # Reload systemctl daemon to recognize new service
+        ret = run_command(["systemctl", "daemon-reload"])
+        await Plugin.log_py(self, "Reload daemon: " + str(ret))
+        ret = run_command(["systemctl", "enable", "tunup"])
+        await Plugin.log_py(self, "Enable service: " + str(ret))
+        ret = run_command(["systemctl", "disable", "systemd-resolved"])
+        await Plugin.log_py(self, "Disable resolved: " + str(ret))
+        ret = run_command(["systemctl", "stop", "systemd-resolved"])
+        await Plugin.log_py(self, "Stop resolved: " + str(ret))
+        ret = run_command(["systemctl", "restart", "tunup"])
+        await Plugin.log_py(self, "Restart tunup: " + str(ret))
+        return wrap_return(str(ret))
+
+    async def uninstall_service(self):
+        _, _, _ = run_command(["systemctl", "stop", "tunup"])
+        _, _, _ = run_command(["systemctl", "disable", "tunup"])
+        return wrap_return(True)
+
+    async def start_service(self, service):
+        _, _, code = run_command(["systemctl", "start", service])
+        return wrap_return(code)
+
+    async def stop_service(self, service):
+        _, _, code = run_command(["systemctl", "stop", service])
+        return wrap_return(code)
+
+    async def check_if_service_exists(self, service):
+        return wrap_return(check_if_service_exists(service))
 
     async def start_server(self):
         """Start the server process"""

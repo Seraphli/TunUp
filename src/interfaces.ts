@@ -14,6 +14,7 @@ export interface BackendInfo {
 	profiles: string[];
     serviceStatus: {
         [key: string]: {
+			exists: boolean;
             active: boolean;
             enabled: boolean;
         };
@@ -24,10 +25,12 @@ export const DefaultBackendInfo: BackendInfo = {
 	profiles: [],
     serviceStatus: {
         tunup: {
+			exists: false,
             active: false,
             enabled: false,
         },
         resolved: {
+			exists: true,
             active: false,
             enabled: false,
         },
@@ -35,7 +38,6 @@ export const DefaultBackendInfo: BackendInfo = {
 };
 
 export interface Settings {
-    enabled: boolean;
     profile: string;
     debug: {
         frontend: boolean;
@@ -43,7 +45,6 @@ export interface Settings {
     };
 }
 export const DefaultSettings: Settings = {
-    enabled: false,
     profile: '',
     debug: {
         frontend: true,

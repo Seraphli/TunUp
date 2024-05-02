@@ -1,0 +1,10 @@
+[Unit]
+Description=TunUp Service
+After=network.target
+
+[Service]
+ExecStart=/home/deck/.config/tunup/clashpremium-linux-amd64 -d /home/deck/.config/tunup -f /home/deck/.config/tunup/config.yml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

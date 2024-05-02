@@ -45,6 +45,22 @@ export class Backend {
         return await this.bridge('stop_server');
     }
 
+	async checkIfServiceExists(service: string) {
+		return await this.bridge('check_if_service_exists', { service });
+	}
+    async installService() {
+        return await this.bridge('install_service');
+    }
+	async uninstallService() {
+		return await this.bridge('uninstall_service');
+	}
+    async startService(service: string) {
+        return await this.bridge('start_service', { service });
+    }
+    async stopService(service: string) {
+        return await this.bridge('stop_service', { service });
+    }
+
     async getSettings(key: string, defaultValue: any) {
         const result = await this.bridge('get_settings', {
             key,

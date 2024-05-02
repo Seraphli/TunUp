@@ -1,7 +1,7 @@
 {
   "name": "TunUp",
   "author": "SErAphLi",
-  "flags": ["_root"],
+  "flags": ["root"],
   "publish": {
     "tags": ["network", "root"],
     "description": "Decky network plugin.",

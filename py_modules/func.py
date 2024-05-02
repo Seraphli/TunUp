@@ -32,11 +32,11 @@ def install_service(service_name, service_file_path):
     destination = Path("/etc/systemd/system") / service_name
     try:
         shutil.copy(service_file_path, destination)
-        print("Service file installed successfully.")
         # Reload systemctl daemon to recognize new service
         _, _, _ = run_command(["systemctl", "daemon-reload"])
-    except Exception as e:
-        print(f"Failed to install service: {e}")
+        return True
+    except Exception:
+        return False
 
 
 def check_service_status(service_name):
@@ -52,19 +52,6 @@ def check_service_status(service_name):
             "enabled": (is_enabled, _err1, _code1),
         },
     }
-
-
-def download_file_with_curl(url, filename):
-    """Downloads a file using curl from a specified URL and saves it to a specified filename."""
-    # Build the curl command
-    command = ["curl", "-o", filename, url]
-
-    # Execute the curl command using the previously defined run_command function
-    stdout, stderr, return_code = run_command(command)
-
-    if return_code != 0:
-        return False
-    return True
 
 
 def kill_process_on_port(port):
@@ -86,15 +73,6 @@ def kill_process_on_port(port):
         return False
     except Exception:
         return False
-
-
-def install(service_name, service_file_path):
-    if not check_if_service_exists(service_name):
-        install_service(service_name, service_file_path)
-    else:
-        active, enabled = check_service_status(service_name)
-        print(f"Service '{service_name}' is {'active' if active else 'inactive'}.")
-        print(f"Service '{service_name}' is {'enabled' if enabled else 'disabled'}.")
 
 
 def check_services():
@@ -125,3 +103,15 @@ def list_profiles(folder_path):
 
     # Convert the set to a list and return it
     return list(profiles)
+
+
+def copy_file(src, dst):
+    # Copy the file to the destination and overwrite if it exists
+    shutil.copy(src, dst)
+
+
+def copy_folder(src, dst):
+    # Copy entire folder and its contents to the destination, overwrite if necessary
+    if os.path.exists(dst):
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst)

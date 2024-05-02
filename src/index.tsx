@@ -1,4 +1,5 @@
 import {
+    Router,
     ButtonItem,
     definePlugin,
     Navigation,
@@ -24,6 +25,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
     );
     const [settings, setSettings] = useState<Settings>(backend.settings);
     const [serverOnline, setServerOnline] = useState(false);
+    const [serviceOnline, setServiceOnline] = useState(backend.backendInfo.serviceStatus.tunup.enabled);
     const [options, setOptions] = useState<DropdownOption[]>(
         (() => {
             let subs_option: DropdownOption[] = [];
@@ -33,7 +35,9 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
             return subs_option;
         })(),
     );
-    const [currentSub, setCurrentSub] = useState<string>(backend.settings.profile);
+    const [currentSub, setCurrentSub] = useState<string>(
+        backend.settings.profile,
+    );
 
     useEffect(() => {}, []);
     return (
@@ -74,6 +78,33 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                         setCurrentSub(x.data);
                     }}
                 />
+                <ToggleField
+                    label="Enable Service"
+                    description="Enable TunUp"
+                    checked={serviceOnline}
+                    onChange={async (value) => {
+                        if (value) {
+                            await backend.installService();
+                        } else {
+                            await backend.uninstallService();
+                        }
+                        await backend.checkServices();
+                        setBackendInfo(backend.backendInfo);
+						setServiceOnline(backend.backendInfo.serviceStatus.tunup.enabled);
+                    }}
+                />
+                <ButtonItem
+                    layout="below"
+                    onClick={() => {
+                        Router.CloseSideMenus();
+                        Navigation.NavigateToExternalWeb(
+                            'http://127.0.0.1:9090/ui',
+                        );
+                    }}
+                    disabled={!backend.backendInfo.serviceStatus.tunup.active}
+                >
+                    Open Dashboard
+                </ButtonItem>
             </PanelSection>
             <PanelSection title="Profile Update">
                 <Field focusable={true} childrenContainerWidth="max">
@@ -106,44 +137,52 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                 </ButtonItem>
             </PanelSection>
             <PanelSection title="Service Status">
-                {Object.entries(backendInfo.serviceStatus).map(
-                    ([key, { active, enabled }]) => (
-                        <Field label={key} focusable={true}>
-                            Active: {`${active}`}
-                            <br />
-                            Enabled: {`${enabled}`}
-                        </Field>
-                    ),
-                )}
+                <PanelSectionRow>
+                    <Field label="tunup" focusable={true}>
+                        Active: {`${backendInfo.serviceStatus.tunup.active}`}
+                        <br />
+                        Enabled: {`${backendInfo.serviceStatus.tunup.enabled}`}
+                    </Field>
+                    <ToggleField
+                        label="Active"
+                        description="Activate TunUp"
+						disabled={!backendInfo.serviceStatus.tunup.exists}
+                        checked={backendInfo.serviceStatus.tunup.active}
+                        onChange={async (value) => {
+                            if (value) {
+                                await backend.startService('tunup');
+                            } else {
+                                await backend.stopService('tunup');
+                            }
+                            await backend.checkServices();
+                            setBackendInfo(backend.backendInfo);
+                        }}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <Field label="resolved" focusable={true}>
+                        Active: {`${backendInfo.serviceStatus.resolved.active}`}
+                        <br />
+                        Enabled:{' '}
+                        {`${backendInfo.serviceStatus.resolved.enabled}`}
+                    </Field>
+                    <ToggleField
+                        label="Active"
+                        description="Activate Resolved"
+						disabled={!backendInfo.serviceStatus.resolved.exists}
+                        checked={backendInfo.serviceStatus.resolved.active}
+                        onChange={async (value) => {
+                            if (value) {
+                                await backend.startService('systemd-resolved');
+                            } else {
+                                await backend.stopService('systemd-resolved');
+                            }
+                            await backend.checkServices();
+                            setBackendInfo(backend.backendInfo);
+                        }}
+                    />
+                </PanelSectionRow>
             </PanelSection>
-            {/* <PanelSection title="Actions">
-				<PanelSectionRow>
-					<ButtonItem
-						layout="below"
-						onClick={async () => {
-							await backend.incr();
-							setSettings({
-								...settings,
-								integer: backend.settings.integer,
-							});
-						}}
-					>
-						Incr
-					</ButtonItem>
-					<ButtonItem
-						layout="below"
-						onClick={async () => {
-							await backend.decr();
-							setSettings({
-								...settings,
-								integer: backend.settings.integer,
-							});
-						}}
-					>
-						Decr
-					</ButtonItem>
-				</PanelSectionRow>
-			</PanelSection> */}
             <PanelSection title="Debug Info">
                 <Field label="Version" focusable={true}>
                     {backendInfo.version}
