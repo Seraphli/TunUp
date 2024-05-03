@@ -17,8 +17,6 @@ import { FaRegPaperPlane } from 'react-icons/fa';
 import { Backend } from './backend';
 import { BackendInfo, Settings } from './interfaces';
 
-let backendIsSetup = false;
-
 const Content: VFC<{ backend: Backend }> = ({ backend }) => {
     const [backendInfo, setBackendInfo] = useState<BackendInfo>(
         backend.backendInfo,
@@ -284,10 +282,7 @@ export default definePlugin((serverApi: ServerAPI) => {
             await backend.setup();
         })();
     }
-    if (!backendIsSetup) {
-        backendIsSetup = true;
-        regularFunction();
-    }
+    regularFunction();
 
     return {
         title: <div className={staticClasses.Title}>TunUp</div>,

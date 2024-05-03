@@ -1,12 +1,10 @@
-import codecs
 import os
 import shlex
 import subprocess
 import sys
 import tempfile
 import time
-
-import yaml
+import uuid
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -36,6 +34,7 @@ server_process = None
 class Plugin:
     VERSION = decky_plugin.DECKY_PLUGIN_VERSION
     settingsManager = SettingsManager("TunUp", os.environ["DECKY_PLUGIN_SETTINGS_DIR"])
+    TOKEN = ''
 
     async def get_version(self):
         return wrap_return(self.VERSION)
@@ -247,9 +246,20 @@ class Plugin:
     async def commit_settings(self):
         self.settingsManager.commit()
 
+    async def get_token(self):
+        self.TOKEN = str(uuid.uuid4())[:6]
+        await Plugin.log_py(self, f"Generated new token: {self.TOKEN}")
+        return wrap_return(self.TOKEN)
+
+    async def check_token(self, token):
+        if token == self.TOKEN:
+            return wrap_return(True)
+        return wrap_return(False)
+
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
         decky_plugin.logger.info(f"TunUp {self.VERSION} backend loaded.")
+        self.TOKEN = None
 
     # Function called first during the unload process, utilize this to handle your plugin being removed
     async def _unload(self):

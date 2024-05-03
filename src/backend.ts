@@ -14,19 +14,33 @@ export class Backend {
     public settings: Settings = DefaultSettings;
 
     private serverAPI: ServerAPI;
+    private token = '';
     constructor(serverAPI: ServerAPI) {
         this.serverAPI = serverAPI;
     }
     async setup() {
+        await this.getToken();
+        if (!(await this.checkToken())) {
+            return false;
+        }
         await this.loadSettings();
         await this.saveSettings();
         await this.updateInfo();
+        return true;
     }
     async updateInfo() {
         await this.getVersion();
         await this.checkServices();
         await this.getProfiles();
-		await this.updateProfileMeta();
+        await this.updateProfileMeta();
+    }
+
+    // Avoid repeated setup after reload
+    async getToken() {
+        this.token = await this.bridge('get_token');
+    }
+    async checkToken() {
+        return await this.bridge('check_token', { token: this.token });
     }
 
     async getVersion() {
@@ -163,6 +177,13 @@ export class Backend {
     }
 
     async bridge(functionName: string, namedArgs?: any) {
+        if (
+            functionName !== 'check_token' &&
+            functionName !== 'get_token' &&
+            !(await this.checkToken())
+        ) {
+            return null;
+        }
         namedArgs = namedArgs ? namedArgs : {};
         // const error = new Error('Stack trace');
         // await this.log({
@@ -173,7 +194,9 @@ export class Backend {
         // });
         await this.log({
             sender: 'bridge',
-            message: `${functionName} call with ${JSON.stringify(namedArgs)}`,
+            message: `${functionName} call with ${JSON.stringify(
+                namedArgs,
+            )}, token: ${this.token}`,
         });
         const ret = await this.serverAPI.callPluginMethod<any, BackendReturn>(
             functionName,
@@ -181,7 +204,9 @@ export class Backend {
         );
         await this.log({
             sender: 'bridge',
-            message: `${functionName} return ${JSON.stringify(ret)}`,
+            message: `${functionName} return ${JSON.stringify(ret)}, token: ${
+                this.token
+            }`,
         });
         if (ret.success) {
             if (ret.result == null) {
