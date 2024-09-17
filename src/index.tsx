@@ -22,7 +22,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
         backend.backendInfo,
     );
     const [settings, setSettings] = useState<Settings>(backend.settings);
-    const [serverOnline, setServerOnline] = useState(false);
+    const [serverOnline, setServerOnline] = useState(backend.backendInfo.serverStatus);
     const [working, setWorking] = useState(false);
     const [serviceOnline, setServiceOnline] = useState(
         backend.backendInfo.serviceStatus.tunup.enabled,
@@ -176,7 +176,8 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                     disabled={serverOnline}
                     onClick={async () => {
                         await backend.startServer();
-                        setServerOnline(true);
+                        await backend.checkServer();
+                        setServerOnline(backend.backendInfo.serverStatus);
                     }}
                 >
                     Start Server
@@ -186,7 +187,8 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                     disabled={!serverOnline}
                     onClick={async () => {
                         await backend.stopServer();
-                        setServerOnline(false);
+                        await backend.checkServer();
+                        setServerOnline(backend.backendInfo.serverStatus);
                     }}
                 >
                     Stop Server

@@ -148,25 +148,22 @@ def update_config_file(profile_name, dir_path):
         os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles"
     )
     clash_path = os.path.join(dir_path, "clash")
-    config_path = os.path.expanduser("~/.config")
+    config_path = "/home/deck/.config"
     tunup_path = os.path.join(config_path, "tunup")
-    profile_yml = yaml.safe_load(
-        codecs.open(
-            os.path.join(profiles_savepath, f"{profile_name}.yml"), "r", "utf-8"
-        )
-    )
-    template_yml = yaml.safe_load(
-        codecs.open(os.path.join(clash_path, "template.yml"), "r", "utf-8")
-    )
+    profile_yml_path = os.path.join(profiles_savepath, f"{profile_name}.yml")
+    with codecs.open(profile_yml_path, "r", "utf-8") as file:
+        profile_yml = yaml.safe_load(file)
+    template_yml_path = os.path.join(clash_path, "template.yml")
+    with codecs.open(template_yml_path, "r", "utf-8") as file:
+        template_yml = yaml.safe_load(file)
     config_yml = {**template_yml}
     config_yml["proxies"] = profile_yml["proxies"]
     config_yml["proxy-groups"] = profile_yml["proxy-groups"]
     config_yml["rules"] = profile_yml["rules"]
-    yaml.dump(
-        config_yml,
-        codecs.open(os.path.join(tunup_path, "config.yml"), "w", "utf-8"),
-        allow_unicode=True,
-    )
+    config_yml_path = os.path.join(tunup_path, "config.yml")
+    with codecs.open(config_yml_path, "w", "utf-8") as file:
+        yaml.safe_dump(config_yml, file, allow_unicode=True)
+    return profile_yml_path, profile_yml["proxies"][:3], config_yml_path
 
 
 def copy_file(src, dst):

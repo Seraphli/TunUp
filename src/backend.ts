@@ -33,6 +33,7 @@ export class Backend {
         await this.checkServices();
         await this.getProfiles();
         await this.updateProfileMeta();
+        await this.checkServer();
     }
 
     // Avoid repeated setup after reload
@@ -54,6 +55,9 @@ export class Backend {
     }
     async getProfileMeta(profile_name: string) {
         return await this.bridge('get_profile_meta', { profile_name });
+    }
+    async checkServer() {
+        this.backendInfo.serverStatus = await this.bridge('check_server');
     }
     async updateProfileMeta() {
         if (this.settings.profile !== '') {

@@ -23,6 +23,7 @@ export interface BackendInfo {
             enabled: boolean;
         };
     };
+    serverStatus: boolean;
 }
 export const DefaultBackendInfo: BackendInfo = {
     version: '0.0.0',
@@ -43,6 +44,7 @@ export const DefaultBackendInfo: BackendInfo = {
             enabled: false,
         },
     },
+    serverStatus: false,
 };
 
 export interface Settings {

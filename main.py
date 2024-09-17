@@ -34,7 +34,7 @@ server_process = None
 class Plugin:
     VERSION = decky_plugin.DECKY_PLUGIN_VERSION
     settingsManager = SettingsManager("TunUp", os.environ["DECKY_PLUGIN_SETTINGS_DIR"])
-    TOKEN = ''
+    TOKEN = ""
 
     async def get_version(self):
         return wrap_return(self.VERSION)
@@ -71,6 +71,15 @@ class Plugin:
                 "update_time": ret["update_time"],
             }
         )
+
+    async def check_server(self):
+        await Plugin.log_py(self, "Checking server")
+        global server_process
+        if server_process is None:
+            await Plugin.log_py(self, "Server is not running.")
+            return wrap_return(False)
+        await Plugin.log_py(self, "Server is running.")
+        return wrap_return(True)
 
     async def update_profile(self, profile_name):
         profile_meta = get_profile_meta(profile_name)
@@ -125,7 +134,7 @@ class Plugin:
             return wrap_return(False)
         dir_path = os.path.dirname(os.path.realpath(__file__))
         clash_path = os.path.join(dir_path, "clash")
-        config_path = os.path.expanduser("~/.config")
+        config_path = "/home/deck/.config"
         tunup_path = os.path.join(config_path, "tunup")
         os.makedirs(tunup_path, exist_ok=True)
 
@@ -148,7 +157,9 @@ class Plugin:
             os.path.join(clash_path, "web"),
             os.path.join(tunup_path, "web"),
         )
-        update_config_file(cur_profile, os.path.dirname(os.path.realpath(__file__)))
+        await Plugin.log_py(self, f"Current profile: {cur_profile}")
+        ret = update_config_file(cur_profile, dir_path)
+        await Plugin.log_py(self, "Update config file: " + str(ret))
 
         ret = run_command(
             [
@@ -206,14 +217,20 @@ class Plugin:
 
     async def stop_server(self):
         """Stop the server process"""
+        await Plugin.log_py(self, "Stopping server.")
         global server_process
         if server_process is None:
             await Plugin.log_py(self, "Server is not running.")
             if kill_process_on_port(12345):
                 await Plugin.log_py(self, "Killed another process using port 12345.")
             return wrap_return(True)
+        await Plugin.log_py(self, f"Terminating server process: {server_process.pid}")
         server_process.terminate()  # Send termination signal
-        server_process.wait()  # Wait for the process to finish
+        try:
+            server_process.wait(3)  # Wait for the process to finish
+        except subprocess.TimeoutExpired:
+            await Plugin.log_py(self, "Server process did not terminate.")
+            server_process.kill()
         await Plugin.log_py(self, "Server stopped.")
         server_process = None
         return wrap_return(True)
