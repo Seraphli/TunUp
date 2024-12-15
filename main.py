@@ -1,10 +1,15 @@
 import os
 import shlex
+import ssl
 import subprocess
 import sys
 import tempfile
 import time
+import traceback
 import uuid
+
+import aiohttp
+import certifi
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -35,6 +40,7 @@ class Plugin:
     VERSION = decky_plugin.DECKY_PLUGIN_VERSION
     settingsManager = SettingsManager("TunUp", os.environ["DECKY_PLUGIN_SETTINGS_DIR"])
     TOKEN = ""
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     async def get_version(self):
         return wrap_return(self.VERSION)
@@ -92,18 +98,28 @@ class Plugin:
         # Download profile
         url = profile_meta["url"]
         update_interval = profile_meta["update_interval"]
-        # CURL to temp dir then move to profiles
-        safe_url = shlex.quote(url)
-        with tempfile.NamedTemporaryFile(suffix=".yml", delete=False) as temp_file:
-            filename = shlex.quote(temp_file.name)
+        # use aiohttp to temp dir then move to profiles
         profiles_savepath = os.path.join(
             os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles"
         )
-        command = f"wget -O {filename} {safe_url}"
-        await Plugin.log_py_err(self, f"Running command: {command}")
         try:
-            result = subprocess.run(
-                command, capture_output=True, text=True, check=True, shell=True
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, ssl=self.ssl_context) as res:
+                    res.raise_for_status()
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".yml", delete=False
+                    ) as temp_file:
+                        filename = shlex.quote(temp_file.name)
+                        with open(temp_file.name, "wb") as file:
+                            async for chunk in res.content.iter_chunked(1024):
+                                file.write(chunk)
+            # Move to profiles
+            copy_file(
+                filename,
+                os.path.join(
+                    profiles_savepath,
+                    f"{profile_name}.yml",
+                ),
             )
             update_time = int(time.time())
             meta_filename = os.path.join(
@@ -115,13 +131,9 @@ class Plugin:
                 meta_file.write(f"update_time: {update_time}\n")
                 meta_file.write(f"update_interval: {update_interval}\n")
                 meta_file.write("type: download\n")
-        except subprocess.CalledProcessError as e:
-            await Plugin.log_py_err(self, f"Error downloading file: {e}")
-            await Plugin.log_py_err(self, f"stdout: {e.stdout}")
-            await Plugin.log_py_err(self, f"stderr: {e.stderr}")
-            return wrap_return(False)
         except Exception as e:
             await Plugin.log_py_err(self, f"Error: {e}")
+            await Plugin.log_py_err(self, traceback.format_exc())
             return wrap_return(False)
         update_config_file(profile_name, os.path.dirname(os.path.realpath(__file__)))
         ret = run_command(["systemctl", "restart", "tunup"])
