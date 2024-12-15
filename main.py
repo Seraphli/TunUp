@@ -96,19 +96,14 @@ class Plugin:
         safe_url = shlex.quote(url)
         with tempfile.NamedTemporaryFile(suffix=".yml", delete=False) as temp_file:
             filename = shlex.quote(temp_file.name)
-        command = f"curl -L {safe_url} -o {filename}"
         profiles_savepath = os.path.join(
             os.environ["DECKY_PLUGIN_SETTINGS_DIR"], "profiles"
         )
+        command = f"wget -O {filename} {safe_url}"
+        await Plugin.log_py_err(self, f"Running command: {command}")
         try:
-            subprocess.run(command, shell=True, check=True)
-            # Move to profiles
-            copy_file(
-                filename,
-                os.path.join(
-                    profiles_savepath,
-                    f"{profile_name}.yml",
-                ),
+            result = subprocess.run(
+                command, capture_output=True, text=True, check=True, shell=True
             )
             update_time = int(time.time())
             meta_filename = os.path.join(
@@ -120,8 +115,13 @@ class Plugin:
                 meta_file.write(f"update_time: {update_time}\n")
                 meta_file.write(f"update_interval: {update_interval}\n")
                 meta_file.write("type: download\n")
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             await Plugin.log_py_err(self, f"Error downloading file: {e}")
+            await Plugin.log_py_err(self, f"stdout: {e.stdout}")
+            await Plugin.log_py_err(self, f"stderr: {e.stderr}")
+            return wrap_return(False)
+        except Exception as e:
+            await Plugin.log_py_err(self, f"Error: {e}")
             return wrap_return(False)
         update_config_file(profile_name, os.path.dirname(os.path.realpath(__file__)))
         ret = run_command(["systemctl", "restart", "tunup"])
