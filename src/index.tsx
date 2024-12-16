@@ -22,11 +22,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
         backend.backendInfo,
     );
     const [settings, setSettings] = useState<Settings>(backend.settings);
-    const [serverOnline, setServerOnline] = useState(backend.backendInfo.serverStatus);
     const [working, setWorking] = useState(false);
-    const [serviceOnline, setServiceOnline] = useState(
-        backend.backendInfo.serviceStatus.tunup.enabled,
-    );
     const [options, setOptions] = useState<DropdownOption[]>(
         (() => {
             let subs_option: DropdownOption[] = [];
@@ -130,7 +126,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                     label="Enable Service"
                     description="Enable TunUp"
                     disabled={working}
-                    checked={serviceOnline}
+                    checked={backend.backendInfo.serviceStatus.tunup.enabled}
                     onChange={async (value) => {
                         setWorking(true);
                         if (value) {
@@ -139,10 +135,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                             await backend.uninstallService();
                         }
                         await backend.checkServices();
-                        setBackendInfo(backend.backendInfo);
-                        setServiceOnline(
-                            backend.backendInfo.serviceStatus.tunup.enabled,
-                        );
+                        setBackendInfo({ ...backend.backendInfo });
                         setWorking(false);
                     }}
                 />
@@ -173,22 +166,22 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                 </Field>
                 <ButtonItem
                     layout="below"
-                    disabled={serverOnline}
+                    disabled={backend.backendInfo.serverStatus}
                     onClick={async () => {
                         await backend.startServer();
                         await backend.checkServer();
-                        setServerOnline(backend.backendInfo.serverStatus);
+                        setBackendInfo({ ...backend.backendInfo });
                     }}
                 >
                     Start Server
                 </ButtonItem>
                 <ButtonItem
                     layout="below"
-                    disabled={!serverOnline}
+                    disabled={!backend.backendInfo.serverStatus}
                     onClick={async () => {
                         await backend.stopServer();
                         await backend.checkServer();
-                        setServerOnline(backend.backendInfo.serverStatus);
+                        setBackendInfo({ ...backend.backendInfo });
                     }}
                 >
                     Stop Server
@@ -213,7 +206,7 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                                 await backend.stopService('tunup');
                             }
                             await backend.checkServices();
-                            setBackendInfo(backend.backendInfo);
+                            setBackendInfo({ ...backend.backendInfo });
                         }}
                     />
                 </PanelSectionRow>
@@ -231,12 +224,12 @@ const Content: VFC<{ backend: Backend }> = ({ backend }) => {
                         checked={backendInfo.serviceStatus.resolved.active}
                         onChange={async (value) => {
                             if (value) {
-                                await backend.startService('systemd-resolved');
+                                await backend.restoreResolved();
                             } else {
-                                await backend.stopService('systemd-resolved');
+                                await backend.disableResolved();
                             }
                             await backend.checkServices();
-                            setBackendInfo(backend.backendInfo);
+                            setBackendInfo({ ...backend.backendInfo });
                         }}
                     />
                 </PanelSectionRow>

@@ -21,12 +21,15 @@ from settings import SettingsManager
 
 from py_modules.func import (
     check_if_service_exists,
+    check_resolved_state,
     check_service_status,
     copy_file,
     copy_folder,
+    disable_systemd_resolved,
     get_profile_meta,
     kill_process_on_port,
     list_profiles,
+    restore_systemd_resolved,
     run_command,
     set_profile_meta,
     update_config_file,
@@ -59,6 +62,27 @@ class Plugin:
                 },
             }
         )
+
+    async def check_resolved(self):
+        return wrap_return(check_resolved_state())
+
+    async def restore_resolved(self):
+        try:
+            restore_systemd_resolved()
+        except Exception as e:
+            await Plugin.log_py_err(self, f"Error: {e}")
+            await Plugin.log_py_err(self, traceback.format_exc())
+            return wrap_return(False)
+        return wrap_return(True)
+
+    async def disable_resolved(self):
+        try:
+            disable_systemd_resolved()
+        except Exception as e:
+            await Plugin.log_py_err(self, f"Error: {e}")
+            await Plugin.log_py_err(self, traceback.format_exc())
+            return wrap_return(False)
+        return wrap_return(True)
 
     async def get_profiles(self):
         return wrap_return(
@@ -144,6 +168,8 @@ class Plugin:
         cur_profile = await Plugin.get_settings(self, "profile", "", string=False)
         if cur_profile == "":
             return wrap_return(False)
+        if check_resolved_state() == "disable":
+            disable_systemd_resolved()
         dir_path = os.path.dirname(os.path.realpath(__file__))
         clash_path = os.path.join(dir_path, "clash")
         config_path = "/home/deck/.config"

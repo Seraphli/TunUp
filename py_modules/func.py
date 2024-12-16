@@ -42,7 +42,7 @@ def install_service(service_name, service_file_path):
         return False
 
 
-def check_service_status(service_name):
+def check_service_status(service_name: str):
     """Check if the service is active and enabled."""
     is_active, _err0, _code0 = run_command(["systemctl", "is-active", service_name])
     is_enabled, _err1, _code1 = run_command(["systemctl", "is-enabled", service_name])
@@ -176,3 +176,125 @@ def copy_folder(src, dst):
     if os.path.exists(dst):
         shutil.rmtree(dst)
     shutil.copytree(src, dst)
+
+
+def disable_systemd_resolved():
+    """
+    Disables systemd-resolved service, updates NetworkManager configuration,
+    and restarts NetworkManager.
+    """
+    # Stop systemd-resolved
+    stdout, stderr, rc = run_command(["systemctl", "stop", "systemd-resolved"])
+    if rc != 0:
+        raise RuntimeError(f"Failed to stop systemd-resolved: {stderr}")
+
+    # Disable systemd-resolved
+    stdout, stderr, rc = run_command(["systemctl", "disable", "systemd-resolved"])
+    if rc != 0:
+        raise RuntimeError(f"Failed to disable systemd-resolved: {stderr}")
+
+    # Mask systemd-resolved
+    stdout, stderr, rc = run_command(["systemctl", "mask", "systemd-resolved"])
+    if rc != 0:
+        raise RuntimeError(f"Failed to mask systemd-resolved: {stderr}")
+
+    # Update /etc/NetworkManager/conf.d/dns.conf
+    conf_path = "/etc/NetworkManager/conf.d/dns.conf"
+    new_content = "[main]\ndns=default\n"
+    try:
+        # Write the new configuration
+        with open(conf_path, "w") as f:
+            f.write(new_content)
+    except Exception as e:
+        raise RuntimeError(f"Error while updating {conf_path}: {str(e)}")
+
+    # Restart NetworkManager
+    stdout, stderr, rc = run_command(["systemctl", "restart", "NetworkManager"])
+    if rc != 0:
+        raise RuntimeError(f"Failed to restart NetworkManager: {stderr}")
+
+    return True
+
+
+def restore_systemd_resolved():
+    """
+    Restores the system to use systemd-resolved again after it was disabled.
+    This assumes the original configuration used `systemd-resolved`.
+
+    Steps:
+    - Unmask, enable, and start systemd-resolved.
+    - Set NetworkManager dns=systemd-resolved in /etc/NetworkManager/conf.d/dns.conf.
+    - Restart NetworkManager.
+    """
+
+    # Unmask systemd-resolved
+    stdout, stderr, rc = run_command(["systemctl", "unmask", "systemd-resolved"])
+    if rc != 0:
+        raise RuntimeError(f"Failed to unmask systemd-resolved: {stderr}")
+
+    # Enable systemd-resolved
+    stdout, stderr, rc = run_command(["systemctl", "enable", "systemd-resolved"])
+    if rc != 0:
+        raise RuntimeError(f"Failed to enable systemd-resolved: {stderr}")
+
+    # Start systemd-resolved
+    stdout, stderr, rc = run_command(["systemctl", "start", "systemd-resolved"])
+    if rc != 0:
+        raise RuntimeError(f"Failed to start systemd-resolved: {stderr}")
+
+    # Update /etc/NetworkManager/conf.d/dns.conf back to use systemd-resolved
+    conf_path = "/etc/NetworkManager/conf.d/dns.conf"
+    new_content = "[main]\ndns=systemd-resolved\n"
+    try:
+        with open(conf_path, "w") as f:
+            f.write(new_content)
+    except Exception as e:
+        raise RuntimeError(f"Error while updating {conf_path}: {str(e)}")
+
+    # Restart NetworkManager
+    stdout, stderr, rc = run_command(["systemctl", "restart", "NetworkManager"])
+    if rc != 0:
+        raise RuntimeError(f"Failed to restart NetworkManager: {stderr}")
+
+    return True
+
+
+def check_resolved_state():
+    """
+    Checks the current state of systemd-resolved and NetworkManager configuration
+    and determines whether you need to disable or restore systemd-resolved.
+
+    Returns:
+        "disable" if the system is currently using systemd-resolved and should be disabled.
+        "restore" if the system is currently disabled and should be restored.
+        "unknown" if the state does not match either expected configuration.
+    """
+    # Check systemd-resolved status
+    stdout, stderr, rc = run_command(["systemctl", "is-active", "systemd-resolved"])
+    resolved_is_active = stdout.strip() == "active"
+
+    # Read the dns configuration
+    conf_path = "/etc/NetworkManager/conf.d/dns.conf"
+    dns_mode = None
+    try:
+        with open(conf_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("dns="):
+                    dns_mode = line.split("=", 1)[1]
+                    break
+    except FileNotFoundError:
+        # If file doesn't exist, we don't know the exact state.
+        dns_mode = None
+
+    # Decide based on conditions
+    # If systemd-resolved is active and dns=systemd-resolved, system is currently enabled, so we should disable
+    if resolved_is_active and dns_mode == "systemd-resolved":
+        return "disable"
+
+    # If systemd-resolved is not active (could be masked/stopped) and dns=default, system is currently disabled, so we should restore
+    if not resolved_is_active and dns_mode == "default":
+        return "restore"
+
+    # If neither condition matches, we return unknown
+    return "unknown"

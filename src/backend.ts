@@ -90,6 +90,16 @@ export class Backend {
         return await this.bridge('stop_service', { service });
     }
 
+    async checkResolved() {
+        return await this.bridge('check_resolved');
+    }
+    async restoreResolved() {
+        return await this.bridge('restore_resolved');
+    }
+    async disableResolved() {
+        return await this.bridge('disable_resolved');
+    }
+
     async updateProfile(profile_name: string) {
         return await this.bridge('update_profile', { profile_name });
     }
